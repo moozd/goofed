@@ -114,9 +114,7 @@ func (p *Parser) act(action Action, c byte) {
 
 	switch action {
 	case ActionClear:
-		p.event.final = 0x00
-		p.event.params = make([]byte, 0)
-		p.event.intermediates = make([]byte, 0)
+		p.event.clear()
 	case ActionCollect:
 		p.event.intermediates = append(p.event.intermediates, c)
 	case ActionParam:

@@ -23,8 +23,12 @@ func NewEvent() *Event {
 func (e *Event) rest() {
 	e.name = "unknown"
 	e.char = 0x0
-	e.final = 0x0
 	e.expr = make([]rune, 0)
+	e.clear()
+}
+
+func (e *Event) clear() {
+	e.final = 0x0
 	e.params = make([]byte, 0)
 	e.intermediates = make([]byte, 0)
 }
