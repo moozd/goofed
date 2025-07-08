@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"time"
 )
 
 type State string
@@ -93,10 +92,14 @@ func (p *Parser) worker() {
 }
 
 func (p *Parser) feed(c byte) {
-	state, action := p.advance(c)
-	p.state = state
+	// transition to the next state by visiting the new char
+	state, action := p.transition(c)
+
+	// preform the action
 	p.act(action, c)
-	time.Sleep(50 * time.Millisecond)
+
+	// change the state
+	p.state = state
 }
 
 func (p *Parser) dispatch(action Action) {
@@ -139,7 +142,7 @@ func (p *Parser) act(action Action, c byte) {
 	}
 }
 
-func (p *Parser) advance(c byte) (State, Action) {
+func (p *Parser) transition(c byte) (State, Action) {
 	switch p.state {
 
 	case StateGround:
