@@ -59,7 +59,7 @@ func NewParser(ctx context.Context, src io.Reader) *Parser {
 		src:    src,
 		state:  StateGround,
 		event:  NewEvent(),
-		Queue:  make(chan Event, 500),
+		Queue:  make(chan Event, 256),
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -105,7 +105,7 @@ func (p *Parser) feed(c byte) {
 func (p *Parser) dispatch(action Action) {
 	p.event.name = string(action)
 	p.Queue <- *p.event
-	p.event = NewEvent()
+	p.event.rest()
 }
 
 func (p *Parser) act(action Action, c byte) {
