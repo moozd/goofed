@@ -1,7 +1,8 @@
-package shell
+package main
 
 import (
-	"io"
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -11,14 +12,15 @@ import (
 )
 
 type Session struct {
-	cmd    *exec.Cmd
-	pty    *os.File
-	stdin  io.Writer
-	stdout io.Reader
-	done   chan struct{}
+	cmd      *exec.Cmd
+	fd       *os.File
+	ctx      context.Context
+	cancelFn context.CancelFunc
 }
 
-func NewSession(shell string, args ...string) (*Session, error) {
+func NewSession(ctx context.Context, shell string, args ...string) (*Session, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
 	cmd := exec.Command(shell, args...)
 	fd, err := pty.Start(cmd)
 	if err != nil {
@@ -26,30 +28,29 @@ func NewSession(shell string, args ...string) (*Session, error) {
 	}
 
 	session := &Session{
-		cmd:    cmd,
-		pty:    fd,
-		stdin:  fd,
-		stdout: fd,
-		done:   make(chan struct{}),
+		cmd:      cmd,
+		fd:       fd,
+		ctx:      ctx,
+		cancelFn: cancel,
 	}
 
-	go session.handleWindowResize()
-	go session.forwardSignals()
+	go session.startWindowResizer()
+	go session.startSignalForwarder()
 
 	return session, nil
 }
 
 func (s *Session) Write(data []byte) (int, error) {
-	return s.stdin.Write(data)
+	return s.fd.Write(data)
 }
 
 func (s *Session) Read(data []byte) (int, error) {
-	return s.stdout.Read(data)
+	return s.fd.Read(data)
 }
 
 func (s *Session) Close() error {
-	close(s.done)
-	if err := s.pty.Close(); err != nil {
+	s.cancelFn()
+	if err := s.fd.Close(); err != nil {
 		return err
 	}
 
@@ -60,25 +61,26 @@ func (s *Session) Close() error {
 	return nil
 }
 
-func (s *Session) handleWindowResize() {
+func (s *Session) startWindowResizer() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGWINCH)
 	for {
 		select {
-		case <-s.done:
+		case <-s.ctx.Done():
 			return
 		case <-sig:
-			_ = pty.InheritSize(os.Stdin, s.pty)
+			_ = pty.InheritSize(os.Stdin, s.fd)
 		}
 	}
 }
 
-func (s *Session) forwardSignals() {
+func (s *Session) startSignalForwarder() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	for {
 		select {
-		case <-s.done:
+		case <-s.ctx.Done():
+			fmt.Println("Session: signal forwarder [stopped]")
 			return
 		case sig := <-signals:
 			if s.cmd != nil && s.cmd.Process != nil {
