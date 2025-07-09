@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"log"
 )
 
 type State string
@@ -75,7 +76,6 @@ func (p *Parser) Close() {
 }
 
 func (p *Parser) worker() {
-	defer close(p.Queue)
 	reader := bufio.NewReader(p.src)
 	for {
 		select {
@@ -104,13 +104,18 @@ func (p *Parser) feed(c byte) {
 
 func (p *Parser) dispatch(action Action) {
 	p.event.name = string(action)
-	p.Queue <- *p.event
-	p.event.rest()
+
+	select {
+	case <-p.ctx.Done():
+		log.Fatal(p.ctx.Err())
+	case p.Queue <- *p.event:
+		p.event.rest()
+	}
 }
 
 func (p *Parser) act(action Action, c byte) {
-	p.event.expr = append(p.event.expr, c)
 	p.event.char = c
+	p.event.expr = append(p.event.expr, c)
 
 	switch action {
 	case ActionClear:
@@ -138,6 +143,7 @@ func (p *Parser) act(action Action, c byte) {
 		ActionIgnore,
 		ActionNone:
 	}
+
 }
 
 func (p *Parser) transition(c byte) (State, Action) {

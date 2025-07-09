@@ -5,33 +5,32 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/signal"
-	"syscall"
 
 	"github.com/creack/pty"
 )
 
 type Session struct {
-	cmd      *exec.Cmd
-	fd       *os.File
-	ctx      context.Context
-	cancelFn context.CancelFunc
+	cmd    *exec.Cmd
+	fd     *os.File
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func NewSession(ctx context.Context, shell string, args ...string) (*Session, error) {
-	ctx, cancel := context.WithCancel(ctx)
+func NewSession(c context.Context, shell string, args ...string) (*Session, error) {
+	ctx, cancel := context.WithCancel(c)
 
 	cmd := exec.Command(shell, args...)
 	fd, err := pty.Start(cmd)
-	if err != nil {
-		return nil, err
-	}
 
 	session := &Session{
-		cmd:      cmd,
-		fd:       fd,
-		ctx:      ctx,
-		cancelFn: cancel,
+		cmd:    cmd,
+		fd:     fd,
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	go session.startWindowResizer()
@@ -49,7 +48,7 @@ func (s *Session) Read(data []byte) (int, error) {
 }
 
 func (s *Session) Close() error {
-	s.cancelFn()
+	s.cancel()
 	if err := s.fd.Close(); err != nil {
 		return err
 	}
@@ -62,29 +61,26 @@ func (s *Session) Close() error {
 }
 
 func (s *Session) startWindowResizer() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGWINCH)
+	signals := getResizeSignals()
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
-		case <-sig:
+		case <-signals:
 			_ = pty.InheritSize(os.Stdin, s.fd)
 		}
 	}
 }
 
 func (s *Session) startSignalForwarder() {
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	signals := getStopSignals()
 	for {
 		select {
 		case <-s.ctx.Done():
-			fmt.Println("Session: signal forwarder [stopped]")
 			return
-		case sig := <-signals:
+		case signal := <-signals:
 			if s.cmd != nil && s.cmd.Process != nil {
-				_ = s.cmd.Process.Signal(sig)
+				_ = s.cmd.Process.Signal(signal)
 			}
 		}
 	}
