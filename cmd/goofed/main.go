@@ -1,14 +1,15 @@
 package main
 
 import (
-	"log"
+	"runtime"
 
-	"github.com/moozd/goofed/internal/graphics"
+	"github.com/moozd/goofed/internal/app"
 )
 
+func init() {
+	runtime.LockOSThread()
+}
+
 func main() {
-	err := graphics.MainLoop()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	app.MainLoop()
 }

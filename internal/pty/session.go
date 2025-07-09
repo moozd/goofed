@@ -2,7 +2,6 @@ package pty
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 
