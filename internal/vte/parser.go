@@ -109,7 +109,7 @@ func (p *Parser) dispatch(action Action) {
 }
 
 func (p *Parser) act(action Action, c byte) {
-	p.event.expr = append(p.event.expr, rune(c))
+	p.event.expr = append(p.event.expr, c)
 	p.event.char = c
 
 	switch action {
@@ -159,7 +159,7 @@ func (p *Parser) transition(c byte) (State, Action) {
 		case
 			c == 0x19,
 			isBetween(c, 0x1c, 0x1f),
-			isBetween(c, 0x00, 0x017):
+			isBetween(c, 0x00, 0x17):
 			return StateEscape, ActionExecute
 		case c == 0x7f:
 			return StateEscape, ActionIgnore

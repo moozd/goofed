@@ -7,7 +7,7 @@ import (
 
 type Event struct {
 	name          string
-	expr          []rune
+	expr          []byte
 	params        []byte
 	intermediates []byte
 	char          byte
@@ -23,7 +23,7 @@ func NewEvent() *Event {
 func (e *Event) rest() {
 	e.name = "unknown"
 	e.char = 0x0
-	e.expr = make([]rune, 0)
+	e.expr = make([]byte, 0)
 	e.clear()
 }
 
