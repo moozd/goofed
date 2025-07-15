@@ -1,22 +1,21 @@
-//go:build linux || darwin
-// +build linux darwin
+//go:build windows
+// +build windows
 
-package pty
+package session
 
 import (
 	"os"
 	"os/signal"
-	"syscall"
 )
 
 func getStopSignals() chan os.Signal {
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(signals, os.Interrupt)
 	return signals
 }
 
 func getResizeSignals() chan os.Signal {
 	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGWINCH)
+	close(signals)
 	return signals
 }

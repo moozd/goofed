@@ -1,4 +1,4 @@
-package vte
+package parser
 
 import (
 	"bufio"
@@ -47,89 +47,90 @@ const (
 type Parser struct {
 	src    io.Reader
 	state  State
-	event  *Event
-	Queue  chan Event
+	event  *ParserEvent
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	Queue chan ParserEvent
 }
 
-func NewParser(ctx context.Context, src io.Reader) *Parser {
+func New(ctx context.Context, src io.Reader) *Parser {
 	ctx, cancel := context.WithCancel(ctx)
 
-	parser := &Parser{
+	self := &Parser{
 		src:    src,
 		state:  StateGround,
-		event:  NewEvent(),
-		Queue:  make(chan Event, 256),
+		event:  newParserEvent(),
+		Queue:  make(chan ParserEvent, 256),
 		ctx:    ctx,
 		cancel: cancel,
 	}
 
-	go parser.worker()
+	go self.worker()
 
-	return parser
+	return self
 }
 
-func (p *Parser) Close() {
-	p.cancel()
-	close(p.Queue)
+func (self *Parser) Close() {
+	self.cancel()
+	close(self.Queue)
 }
 
-func (p *Parser) worker() {
-	reader := bufio.NewReader(p.src)
+func (self *Parser) worker() {
+	reader := bufio.NewReader(self.src)
 	for {
 		select {
-		case <-p.ctx.Done():
+		case <-self.ctx.Done():
 			return
 		default:
 			b, err := reader.ReadByte()
 			if err == io.EOF {
 				return
 			}
-			p.feed(b)
+			self.feed(b)
 		}
 	}
 }
 
-func (p *Parser) feed(c byte) {
+func (self *Parser) feed(c byte) {
 	// transition to the next state by visiting the new char
-	state, action := p.transition(c)
+	state, action := self.transition(c)
 
 	// preform the action
-	p.act(action, c)
+	self.act(action, c)
 
 	// change the state
-	p.state = state
+	self.state = state
 }
 
-func (p *Parser) dispatch(action Action) {
-	p.event.name = string(action)
+func (self *Parser) dispatch(action Action) {
+	self.event.name = string(action)
 
 	select {
-	case <-p.ctx.Done():
-		log.Fatal(p.ctx.Err())
-	case p.Queue <- *p.event:
-		p.event.rest()
+	case <-self.ctx.Done():
+		log.Fatal(self.ctx.Err())
+	case self.Queue <- *self.event:
+		self.event.rest()
 	}
 }
 
-func (p *Parser) act(action Action, c byte) {
-	p.event.char = c
-	p.event.expr = append(p.event.expr, c)
+func (self *Parser) act(action Action, c byte) {
+	self.event.char = c
+	self.event.expr = append(self.event.expr, c)
 
 	switch action {
 	case ActionClear:
-		p.event.clear()
+		self.event.clear()
 	case ActionCollect:
-		p.event.intermediates = append(p.event.intermediates, c)
+		self.event.intermediates = append(self.event.intermediates, c)
 	case ActionParam:
-		p.event.params = append(p.event.params, c)
+		self.event.params = append(self.event.params, c)
 	case
 		ActionCsiDispatch,
 		ActionEscDispatch,
 		ActionUnhook:
-		p.event.final = c
-		p.dispatch(action)
+		self.event.final = c
+		self.dispatch(action)
 	case
 		ActionPut,
 		ActionPrint,
@@ -138,7 +139,7 @@ func (p *Parser) act(action Action, c byte) {
 		ActionOscPut,
 		ActionOscEnd,
 		ActionExecute:
-		p.dispatch(action)
+		self.dispatch(action)
 	case
 		ActionIgnore,
 		ActionNone:
@@ -146,8 +147,8 @@ func (p *Parser) act(action Action, c byte) {
 
 }
 
-func (p *Parser) transition(c byte) (State, Action) {
-	switch p.state {
+func (self *Parser) transition(c byte) (State, Action) {
+	switch self.state {
 
 	case StateGround:
 		switch {
@@ -411,5 +412,5 @@ func (p *Parser) transition(c byte) (State, Action) {
 		return StateGround, ActionUnhook
 	}
 
-	return p.state, ActionNone
+	return self.state, ActionNone
 }

@@ -1,4 +1,4 @@
-package pty
+package session
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type Session struct {
 	cancel context.CancelFunc
 }
 
-func NewSession(c context.Context, shell string, args ...string) (*Session, error) {
+func New(c context.Context, shell string, args ...string) (*Session, error) {
 	ctx, cancel := context.WithCancel(c)
 
 	cmd := exec.Command(shell, args...)

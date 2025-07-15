@@ -1,4 +1,4 @@
-package pty
+package session
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 
 func TestSession_Echo(t *testing.T) {
 
-	session, err := NewSession(context.Background(), "--norc", "--noprofile")
+	session, err := New(context.Background(), "--norc", "--noprofile")
 	if err != nil {
 		t.Fatalf("failed to start terminal session: %v", err)
 	}
