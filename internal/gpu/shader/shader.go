@@ -3,7 +3,11 @@ package shader
 import "github.com/go-gl/gl/v4.1-core/gl"
 
 type Shader struct {
-	ID uint32
+	id uint32
+}
+
+func (self *Shader) Id() uint32 {
+	return self.id
 }
 
 func New(vertSrc, fragSrc string) *Shader {
@@ -27,9 +31,9 @@ func New(vertSrc, fragSrc string) *Shader {
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
-	return &Shader{ID: shaderProgram}
+	return &Shader{id: shaderProgram}
 }
 
 func (s *Shader) Use() {
-	gl.UseProgram(s.ID)
+	gl.UseProgram(s.id)
 }

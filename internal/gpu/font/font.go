@@ -1,4 +1,4 @@
-package atlas
+package font
 
 import (
 	"encoding/json"
@@ -15,12 +15,13 @@ import (
 )
 
 type GlyphInfo struct {
-	X, Y     int
-	Width    int
-	Height   int
-	Advance  float64
-	BearingX float64
-	BearingY float64
+	X, Y           int
+	Width          int
+	Height         int
+	Advance        float64
+	BearingX       float64
+	BearingY       float64
+	U0, V0, U1, V1 float32
 }
 
 type buildOption struct {
@@ -66,9 +67,28 @@ func New(path string, size int) (*Font, error) {
 	self.SetSize(size)
 	return self, nil
 }
+func (self *Font) Measure(r rune) (width, height int) {
+	bounds, _, ok := self.face.GlyphBounds(r)
+	if !ok {
+		return 0, 0 // glyph not available
+	}
+
+	width = (bounds.Max.X - bounds.Min.X).Ceil()
+	height = (bounds.Max.Y - bounds.Min.Y).Ceil()
+
+	return
+}
 
 func (self *Font) Atlas() image.Image {
 	return self.atlas
+}
+
+func (self *Font) AtlasSize() (width, height int) {
+	b := self.atlas.Bounds()
+	width = b.Max.X - b.Min.X
+	height = b.Max.Y - b.Min.Y
+	return
+
 }
 
 func (self *Font) Glyph(r rune) GlyphInfo {
@@ -191,6 +211,10 @@ retry:
 			Advance:  float64(advance.Ceil()),
 			BearingX: float64(bounds.Min.X.Ceil()),
 			BearingY: float64(bounds.Max.Y.Ceil()),
+			U0:       float32(x) / float32(options.width),
+			V0:       float32(y) / float32(options.height),
+			U1:       float32(x+w) / float32(options.width),
+			V1:       float32(y+h) / float32(options.height),
 		}
 
 		x += w + options.padding
@@ -204,22 +228,23 @@ retry:
 
 }
 
-func (self *Font) CreateTexture() uint32 {
-	rgba := image.NewRGBA(self.atlas.Bounds())
-	draw.Draw(rgba, rgba.Bounds(), self.atlas, image.Point{}, draw.Src)
+func (self *Font) ConfigureTexture(tex uint32) {
+	alpha := image.NewAlpha(self.atlas.Bounds())
+	draw.Draw(alpha, alpha.Bounds(), self.atlas, image.Point{}, draw.Src)
 
-	var tex uint32
-	gl.GenTextures(1, &tex)
 	gl.BindTexture(gl.TEXTURE_2D, tex)
-	w, h := int32(rgba.Rect.Size().X), int32(rgba.Rect.Size().Y)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
-	gl.GenerateMipmap(gl.TEXTURE_2D)
 
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+	w, h := int32(alpha.Rect.Size().X), int32(alpha.Rect.Size().Y)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, w, h, 0,
+		gl.RED, gl.UNSIGNED_BYTE, gl.Ptr(alpha.Pix))
+
+	// Swizzle R to Alpha
+	swizzle := []int32{gl.ZERO, gl.ZERO, gl.ZERO, gl.RED}
+	gl.TexParameteriv(gl.TEXTURE_2D, gl.TEXTURE_SWIZZLE_RGBA, &swizzle[0])
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	return tex
 
 }

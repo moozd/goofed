@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/moozd/goofed/internal/gpu"
+	"github.com/moozd/goofed/internal/gpu/font"
 	"github.com/moozd/goofed/internal/screen"
 	"github.com/moozd/goofed/internal/session"
 )
@@ -28,10 +29,17 @@ func main() {
 	scr := screen.New(ctx, shell)
 	defer scr.Close()
 
+	fnt, err := font.New("/Users/mo/Library/Fonts/FiraCodeNerdFont-Regular.ttf", 12)
+
+	if err != nil {
+		log.Panicln("Unable to load the font.")
+	}
+
 	cfg := gpu.Config{
 		WindowTitle:  "Goofed",
 		WindowHeight: 500,
 		WindowWidth:  600,
+		Font:         fnt,
 	}
 
 	g := gpu.New(ctx, cfg)

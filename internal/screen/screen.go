@@ -10,11 +10,11 @@ import (
 )
 
 type Screen struct {
-	ctx        context.Context
-	session    *session.Session
-	parser     *parser.Parser
-	grid       *grid.Grid
-	gpuContext *gpuContext
+	ctx     context.Context
+	session *session.Session
+	parser  *parser.Parser
+	grid    *grid.Grid
+	gctx    *gpuContext
 
 	gpu.Model
 }

@@ -2,6 +2,7 @@ package gpu
 
 import (
 	"context"
+	"log"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/veandco/go-sdl2/sdl"
@@ -58,29 +59,41 @@ func (self *Gpu) initWindow() error {
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(self.config.WindowWidth),
 		int32(self.config.WindowHeight),
-		sdl.WINDOW_OPENGL|sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE)
+		sdl.WINDOW_OPENGL|sdl.WINDOW_SHOWN|sdl.WINDOW_RESIZABLE|sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
 
 	if err != nil {
 		return err
 	}
 
-	glContext, err := win.GLCreateContext()
+	glc, err := win.GLCreateContext()
 	if err != nil {
 		return err
 	}
 
-	self.glc = glContext
+	err = win.GLMakeCurrent(glc)
+	if err != nil {
+		return err
+	}
+
+	err = sdl.GLSetSwapInterval(1) // 1 = VSync ON
+	if err != nil {
+		return err
+	}
+
+	if err := gl.Init(); err != nil {
+		return err
+	}
+
+	self.glc = glc
 	self.window = win
+	version := gl.GoStr(gl.GetString(gl.VERSION))
+	log.Printf("OpenGL Version: %s", version)
 
 	return nil
 
 }
 
 func (self *Gpu) mainLoop() error {
-
-	if err := gl.Init(); err != nil {
-		return err
-	}
 
 	gl.Viewport(0, 0, int32(self.config.WindowWidth), int32(self.config.WindowHeight))
 

@@ -11,13 +11,15 @@ type Grid struct {
 	Cells      []Cell
 	viewOffset int
 	CellSize   *Size
+
+	dirtyCount int
 }
 
 type Cell struct {
 	Rune  rune
 	Fg    color.Color
 	Bg    color.Color
-	Dirty bool
+	dirty bool
 }
 
 type Cursor struct {
@@ -40,11 +42,12 @@ type GPos struct {
 	Col int
 }
 
-type GridViewMode int
+type ViewMode int
 
 const (
-	ViewAll GridViewMode = iota
-	ViewDirty
+	ViewModeAny ViewMode = iota
+	ViewModeDirty
+	ViewModeRender
 )
 
 func New() *Grid {
@@ -66,8 +69,9 @@ func New() *Grid {
 }
 
 func (self *Grid) Resize(windowWidth, windowHeight int32, blockWidth, blockHeight int32) {
-	self.Size.Rows = int(windowWidth) / int(blockWidth)
-	self.Size.Cols = int(windowHeight) / int(blockHeight)
+
+	self.Size.Rows = int(windowHeight) / int(blockHeight)
+	self.Size.Cols = int(windowWidth) / int(blockWidth)
 	self.CellSize = &Size{Height: int(blockHeight), Width: int(blockWidth)}
 
 	ct := len(self.Cells)
@@ -77,47 +81,58 @@ func (self *Grid) Resize(windowWidth, windowHeight int32, blockWidth, blockHeigh
 		self.Cells = append(self.Cells, make([]Cell, nt-ct)...)
 		for i := range self.Cells {
 			self.Cells[i] = Cell{
-				Fg:    color.White,
-				Bg:    color.Black,
-				Rune:  ' ',
-				Dirty: true,
+				Bg:   color.White,
+				Fg:   color.Black,
+				Rune: 'A',
 			}
-
 		}
 	}
 
-	self.GetView(ViewAll, func(row, col int, cell *Cell) {
-		cell.Dirty = true
+	self.GetView(ViewModeAny, func(row, col int, cell *Cell) {
+		self.markDirty(cell)
 	})
 
+}
+
+func (self *Grid) IsClean() bool {
+	return self.dirtyCount == 0
+
+}
+
+func (self *Grid) markDirty(cell *Cell) {
+	self.dirtyCount = +1
+	cell.dirty = true
+}
+func (self *Grid) markClean(cell *Cell) {
+	self.dirtyCount -= 1
+	if self.dirtyCount < 0 {
+		self.dirtyCount = 0
+	}
+	cell.dirty = false
 }
 
 func (self *Grid) getBuffer() []Cell {
 	return self.Cells[self.viewOffset*self.Size.Cols : (self.viewOffset*self.Size.Cols)+(self.Size.Cols*self.Size.Rows)]
 }
 
-func (self *Grid) GetView(mode GridViewMode, cbl func(x int, y int, cell *Cell)) {
+func (self *Grid) GetView(mode ViewMode, cbl func(x int, y int, cell *Cell)) {
 	buff := self.getBuffer()
 
-	for i, cell := range buff {
-		if !cell.Dirty && mode == ViewDirty {
+	for i := range buff {
+		cell := &buff[i]
+		if !cell.dirty && (mode == ViewModeDirty || mode == ViewModeRender) {
 			continue
 		}
 
 		y := int(i / self.Size.Cols)
 		x := i % self.Size.Cols
 
-		cbl(x, y, &cell)
+		cbl(x, y, cell)
+
+		if mode == ViewModeRender {
+			self.markClean(cell)
+		}
 	}
-}
-
-func (self *Grid) line(i int) []Cell {
-	buff := self.Cells[self.viewOffset*self.Size.Cols:]
-
-	low := i * self.Size.Cols
-	high := (i + 1) * self.Size.Cols
-
-	return slice(buff, low+self.viewOffset, high+self.viewOffset)
 }
 
 func (self *Grid) getDefaultViewOffset() int {
