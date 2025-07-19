@@ -1,18 +1,16 @@
-#version 330 core
-layout(location = 0) in vec2 aPos;
-layout(location = 1) in vec2 aUV;
-layout(location = 2) in vec3 aFGColor;
-layout(location = 3) in vec3 aBGColor;
+#version 410 core
 
-out vec2 TexCoords;
-out vec3 FGColor;
-out vec3 BGColor;
+layout(location = 0) in vec3 aPos; // Vertex position input (from VBO)
+layout(location = 1) in vec3 aColor; // Vertex color input (from VBO)
 
-uniform mat4 uProjection;
+out vec3 vertexColor; // Pass color to fragment shader
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
 
 void main() {
-    gl_Position = uProjection * vec4(aPos, 0.0, 1.0);
-    TexCoords = aUV;
-    FGColor = aFGColor;
-    BGColor = aBGColor;
+    // Apply transformations
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    vertexColor = aColor; // Forward color attribute
 }

@@ -6,8 +6,6 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/moozd/goofed/internal/gpu"
-	"github.com/moozd/goofed/internal/gpu/font"
 	"github.com/moozd/goofed/internal/screen"
 	"github.com/moozd/goofed/internal/session"
 )
@@ -20,35 +18,16 @@ func main() {
 	ctx := context.Background()
 
 	shell, err := session.New(ctx, "zsh")
-	defer shell.Close()
 
 	if err != nil {
 		log.Panicln("Could not start the PTY session.")
 	}
+	defer shell.Close()
 
 	scr := screen.New(ctx, shell)
 	defer scr.Close()
 
-	fnt, err := font.New("/Users/mo/Library/Fonts/FiraCodeNerdFont-Regular.ttf", 12)
-
-	if err != nil {
-		log.Panicln("Unable to load the font.")
-	}
-
-	cfg := gpu.Config{
-		WindowTitle:  "Goofed",
-		WindowHeight: 500,
-		WindowWidth:  600,
-		Font:         fnt,
-	}
-
-	g := gpu.New(ctx, cfg)
-
-	g.Add(scr)
-
-	if err = g.Run(); err != nil {
-		log.Panicln(err)
-	}
+	scr.Loop()
 
 	os.Exit(0)
 }

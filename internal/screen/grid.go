@@ -1,4 +1,4 @@
-package grid
+package screen
 
 import (
 	"image/color"
@@ -45,12 +45,11 @@ type GPos struct {
 type ViewMode int
 
 const (
-	ViewModeAny ViewMode = iota
-	ViewModeDirty
-	ViewModeRender
+	GridIterAll ViewMode = iota
+	GridIterDirty
 )
 
-func New() *Grid {
+func newGrid() *Grid {
 
 	cursor := &Cursor{
 		Hidden: false,
@@ -88,7 +87,7 @@ func (self *Grid) Resize(windowWidth, windowHeight int32, blockWidth, blockHeigh
 		}
 	}
 
-	self.GetView(ViewModeAny, func(row, col int, cell *Cell) {
+	self.GetView(GridIterAll, func(row, col int, cell *Cell) {
 		self.markDirty(cell)
 	})
 
@@ -120,7 +119,7 @@ func (self *Grid) GetView(mode ViewMode, cbl func(x int, y int, cell *Cell)) {
 
 	for i := range buff {
 		cell := &buff[i]
-		if !cell.dirty && (mode == ViewModeDirty || mode == ViewModeRender) {
+		if !cell.dirty && mode == GridIterDirty {
 			continue
 		}
 
@@ -129,7 +128,7 @@ func (self *Grid) GetView(mode ViewMode, cbl func(x int, y int, cell *Cell)) {
 
 		cbl(x, y, cell)
 
-		if mode == ViewModeRender {
+		if mode == GridIterDirty {
 			self.markClean(cell)
 		}
 	}

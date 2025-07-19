@@ -3,20 +3,15 @@ package screen
 import (
 	"context"
 
-	"github.com/moozd/goofed/internal/gpu"
 	"github.com/moozd/goofed/internal/parser"
-	"github.com/moozd/goofed/internal/screen/grid"
 	"github.com/moozd/goofed/internal/session"
 )
 
 type Screen struct {
 	ctx     context.Context
-	session *session.Session
+	grid    *Grid
 	parser  *parser.Parser
-	grid    *grid.Grid
-	gctx    *gpuContext
-
-	gpu.Model
+	session *session.Session
 }
 
 func New(c context.Context, s *session.Session) *Screen {
@@ -24,7 +19,7 @@ func New(c context.Context, s *session.Session) *Screen {
 	self := &Screen{
 		ctx:     c,
 		session: s,
-		grid:    grid.New(),
+		grid:    newGrid(),
 		parser:  parser.New(c, s),
 	}
 	go self.drainParserQueue()
