@@ -27,7 +27,7 @@ func main() {
 	scr := screen.New(ctx, shell)
 	defer scr.Close()
 
-	scr.Loop()
+	scr.Render()
 
 	os.Exit(0)
 }
