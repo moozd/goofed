@@ -48,38 +48,3 @@ func getGlErrorCode(err uint32) string {
 	}
 }
 
-type shader struct {
-	id uint32
-}
-
-func (s *shader) Id() uint32 {
-	return s.id
-}
-
-func newShader(vertSrc, fragSrc string) *shader {
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-	cSources, free := gl.Strs(vertSrc + "\x00")
-	gl.ShaderSource(vertexShader, 1, cSources, nil)
-	free()
-	gl.CompileShader(vertexShader)
-
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	cFrag, freeFrag := gl.Strs(fragSrc + "\x00")
-	gl.ShaderSource(fragmentShader, 1, cFrag, nil)
-	freeFrag()
-	gl.CompileShader(fragmentShader)
-
-	shaderProgram := gl.CreateProgram()
-	gl.AttachShader(shaderProgram, vertexShader)
-	gl.AttachShader(shaderProgram, fragmentShader)
-	gl.LinkProgram(shaderProgram)
-
-	gl.DeleteShader(vertexShader)
-	gl.DeleteShader(fragmentShader)
-
-	return &shader{id: shaderProgram}
-}
-
-func (s *shader) use() {
-	gl.UseProgram(s.id)
-}

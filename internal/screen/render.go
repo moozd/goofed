@@ -11,7 +11,7 @@ import (
 )
 
 func (self *Screen) Loop() {
-	g := gState{scr: self}
+	g := GL{scr: self}
 	g.init()
 	defer g.cleanUp()
 
@@ -35,11 +35,11 @@ func (self *Screen) Loop() {
 	}
 }
 
-type gState struct {
+type GL struct {
 	scr    *Screen
 	win    *sdl.Window
 	gctx   sdl.GLContext
-	shader *shader
+	shader *Shader
 }
 
 //go:embed assets/frag.glsl
@@ -48,12 +48,12 @@ var fragShaderSrc string
 //go:embed assets/vert.glsl
 var vertShaderSrc string
 
-func (gs *gState) render() {
+func (gs *GL) render() {
 
-	gs.shader.use()
+	gs.shader.Use()
 }
 
-func (gs *gState) init() {
+func (gs *GL) init() {
 	title := "goofed"
 	width := int32(800)
 	height := int32(600)
@@ -76,21 +76,21 @@ func (gs *gState) init() {
 	log.Printf("SDL window switch to gl conext.")
 
 	gl.Init()
-	gs.diagnose()
+	diagnose()
 
 	gl.Enable(gl.BLEND)
-	gs.diagnose()
+	diagnose()
 
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	gs.diagnose()
+	diagnose()
 
 	gs.win = win
 	gs.gctx = ctx
-	gs.shader = newShader(vertShaderSrc, fragShaderSrc)
+	gs.shader = NewShader(vertShaderSrc, fragShaderSrc)
 
 }
 
-func (gs *gState) cleanUp() {
+func (gs *GL) cleanUp() {
 	log.Printf("Cleaning up....")
 	// gl.DeleteProgram(r.Shader)
 	// gl.DeleteVertexArrays(1, &r.VAO)
@@ -101,7 +101,7 @@ func (gs *gState) cleanUp() {
 	sdl.Quit()
 }
 
-func (gs *gState) diagnose() {
+func diagnose() {
 	errCode := gl.GetError()
 	if errCode == gl.NO_ERROR {
 		return
@@ -121,4 +121,50 @@ func (gs *gState) diagnose() {
 
 	fmt.Printf("OpenGL error 0x%x (%s) at %s:%d (in %s)\n",
 		errCode, getGlErrorCode(errCode), file, line, fnName)
+}
+
+type VBO struct{}
+
+type VAO struct{}
+
+type EBO struct{}
+
+type Shader struct {
+	id uint32
+}
+
+func NewShader(vertSrc, fragSrc string) *Shader {
+	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+	cSources, free := gl.Strs(vertSrc + "\x00")
+	gl.ShaderSource(vertexShader, 1, cSources, nil)
+	free()
+	gl.CompileShader(vertexShader)
+
+	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
+	cFrag, freeFrag := gl.Strs(fragSrc + "\x00")
+	gl.ShaderSource(fragmentShader, 1, cFrag, nil)
+	freeFrag()
+	gl.CompileShader(fragmentShader)
+
+	shaderProgram := gl.CreateProgram()
+	gl.AttachShader(shaderProgram, vertexShader)
+	gl.AttachShader(shaderProgram, fragmentShader)
+	gl.LinkProgram(shaderProgram)
+
+	gl.DeleteShader(vertexShader)
+	gl.DeleteShader(fragmentShader)
+
+	return &Shader{id: shaderProgram}
+}
+
+func (s *Shader) Use() {
+	gl.UseProgram(s.id)
+}
+
+func (s *Shader) Id() uint32 {
+	return s.id
+}
+
+func (s *Shader) Delete() {
+	gl.DeleteProgram(s.id)
 }
