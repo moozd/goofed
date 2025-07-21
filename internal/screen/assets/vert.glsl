@@ -9,6 +9,8 @@ out vec3 fg;
 out vec3 bg;
 out vec2 uv;
 
+ 
+
 uniform mat4 projection;
 
 void main() {

@@ -3,7 +3,6 @@ package screen
 import (
 	_ "embed"
 	"image/color"
-	"log"
 
 	"github.com/moozd/goofed/pkg/gfx"
 )
@@ -16,15 +15,20 @@ var (
 	vertShaderSrc string
 )
 
+const FONT_ADDR = "/home/mo/.local/share/fonts/FiraCode/FiraCodeNerdFont-Regular.ttf"
+
 func (self *Screen) Render() {
 	surface := gfx.NewSurface()
 	surface.SetBackground(color.RGBA{R: 0x0, G: 0x0, B: 0x0})
 
-	shader := gfx.NewShader(vertShaderSrc, fragShaderSrc)
-
 	w, h := surface.Size()
 
-	vertices, indices := createGrid(w, h, 20, 30)
+	fnt := gfx.NewFont(FONT_ADDR, 32)
+	vertices, indices := createGrid(fnt, w, h, int(w/32), int(h/32))
+
+	shader := gfx.NewShader(vertShaderSrc, fragShaderSrc)
+	shader.Use()
+	shader.SetInt("fontAtlas", 0)
 
 	vao := gfx.NewVAO(gfx.F32.SizeOf(3 + 2 + 3 + 3))
 	vbo := gfx.NewVBO(vertices)
@@ -40,8 +44,6 @@ func (self *Screen) Render() {
 	ebo.Unbind()
 
 	surface.OnResize(func(w, h int32) {
-		log.Printf("Window size changed to %dx%d", w, h)
-
 		shader.Use()
 		shader.SetMat4("projection", surface.Projection)
 	})
@@ -50,20 +52,22 @@ func (self *Screen) Render() {
 		shader.Use()
 		vao.Bind()
 		vao.Draw(ebo)
+		vao.Unbind()
 	})
 
 	shader.Delete()
 	vbo.Delete()
 	vao.Delete()
 	ebo.Delete()
+	fnt.Delete()
 
 }
 
-func createGrid(ww, wh int32, m, n int) (vertices []float32, indices []uint32) {
+func createGrid(fnt *gfx.Font, ww, wh int32, m, n int) (vertices []float32, indices []uint32) {
 
 	tc := uint32(0)
-	cw := float32(ww) / float32(m) // width per column
-	ch := float32(wh) / float32(n) // height per row
+	cw := float32(ww) / float32(m)
+	ch := float32(wh) / float32(n)
 	for y := range n {
 		for x := range m {
 
@@ -72,15 +76,17 @@ func createGrid(ww, wh int32, m, n int) (vertices []float32, indices []uint32) {
 			b := float32(y+1) * ch
 			t := float32(y) * ch
 
-			fgr, fgg, fgb := 0.5, 0.5, 0.5
+			fgr, fgg, fgb := 1, 1, 1
 			bgr, bgg, bgb := 0.1, 0.1, 0.1
 
+			u0, v0, u1, v1 := fnt.GetUVs('A')
+
 			vertices = append(vertices, []float32{
-				// pos   // uv  								 // fg           												   // bg
-				l, b, 0, 0.0, 0.0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
-				r, b, 0, 1.0, 0.0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
-				l, t, 0, 0.0, 1.0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
-				r, t, 0, 1.0, 1.0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
+				// pos   // uv   // fg           												   // bg
+				l, b, 0, u0, v1, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
+				r, b, 0, u1, v1, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
+				l, t, 0, u0, v0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
+				r, t, 0, u1, v0, float32(fgr), float32(fgg), float32(fgb), float32(bgr), float32(bgg), float32(bgb),
 			}...,
 			)
 

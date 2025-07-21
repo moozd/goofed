@@ -41,6 +41,10 @@ func (s *Shader) SetMat4(name string, mat mgl32.Mat4) {
 	location := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
 	gl.UniformMatrix4fv(location, 1, false, &mat[0])
 }
+func (s *Shader) SetInt(name string, i int32) {
+	texUniform := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	gl.Uniform1i(texUniform, i)
+}
 
 func (s *Shader) Id() uint32 {
 	return s.id

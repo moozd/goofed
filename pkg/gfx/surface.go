@@ -72,6 +72,8 @@ func (s *Surface) drawBackground() {
 
 func (s *Surface) handleResize() {
 	w, h := s.win.GetSize()
+	log.Printf("SDL window size changed %dx%d\n", w, h)
+
 	gl.Viewport(0, 0, w, h)
 	s.Projection = mgl32.Ortho2D(0, float32(w), float32(h), 0)
 	if s.resizeHandler != nil {
@@ -120,7 +122,7 @@ func (gs *Surface) init() {
 }
 
 func (gs *Surface) cleanUp() {
-	log.Printf("Gl Cleaning up....")
+	log.Printf("SDL bye.")
 	sdl.GLDeleteContext(gs.gctx)
 	gs.win.Destroy()
 	sdl.Quit()

@@ -15,7 +15,7 @@ func diagnose() {
 
 	pc, file, line, ok := runtime.Caller(1)
 	if !ok {
-		fmt.Printf("OpenGL error: 0x%x (caller info unavailable)\n", errCode)
+		fmt.Printf("OPEN GL: error 0x%x (caller info unavailable)\n", errCode)
 		return
 	}
 
@@ -25,7 +25,7 @@ func diagnose() {
 		fnName = fn.Name()
 	}
 
-	fmt.Printf("OpenGL error 0x%x (%s) at %s:%d (in %s)\n",
+	fmt.Printf("OPEN GL: error 0x%x (%s) at %s:%d (in %s)\n",
 		errCode, asGLErrorCode(errCode), file, line, fnName)
 }
 
