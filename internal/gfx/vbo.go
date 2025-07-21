@@ -1,6 +1,6 @@
 package gfx
 
-import "github.com/go-gl/gl/v2.1/gl"
+import "github.com/go-gl/gl/v4.1-core/gl"
 
 type VBO struct {
 	id       uint32
@@ -10,13 +10,12 @@ type VBO struct {
 func NewVBO(vertices []float32) *VBO {
 	vbo := &VBO{}
 	vbo.vertices = vertices
-	size, _ := GetType(GLfloat)
 
 	gl.GenBuffers(1, &vbo.id)
 	diagnose()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo.id)
 	diagnose()
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*size, gl.Ptr(vertices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*F32.Size, gl.Ptr(vertices), gl.STATIC_DRAW)
 	diagnose()
 
 	return vbo

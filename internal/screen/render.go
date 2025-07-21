@@ -37,13 +37,11 @@ func (self *Screen) Render() {
 	}
 
 	vao := gfx.NewVAO()
-	vao.Bind()
-
 	vbo := gfx.NewVBO(vertices)
 	ebo := gfx.NewEBO(indices)
 
-	vao.Define(vbo, 0, 3, gfx.GLfloat, 6, 0)
-	vao.Define(vbo, 1, 3, gfx.GLfloat, 6, 3)
+	vao.Define(vbo, gfx.F32, 0, 3, 6*gfx.F32.Size, 0)
+	vao.Define(vbo, gfx.F32, 1, 3, 6*gfx.F32.Size, 3*gfx.F32.Size)
 
 	vao.Unbind()
 	vbo.Unbind()
@@ -57,7 +55,7 @@ func (self *Screen) Render() {
 		shader.Use()
 		vao.Bind()
 
-		gl.DrawElementsWithOffset(gl.TRIANGLES, 9, gl.UNSIGNED_INT, 0)
+		vao.Draw(ebo)
 
 	})
 

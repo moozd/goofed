@@ -12,22 +12,34 @@ func NewVAO() *VAO {
 	gl.GenVertexArrays(1, &vao.id)
 	diagnose()
 
+	vao.Bind()
+
 	return vao
 }
 
-func (v *VAO) Define(vbo *VBO, layout uint32, numComponents int32, glType GLType, stride int32, offset int) {
+func (v *VAO) Define(vbo *VBO, kind *GFXType, layout uint32, numComponents int32, stride int, offset int) {
 
-	gsize, gtype := GetType(glType)
+	normalized := false
+
+	if kind == U8 || kind == I8 {
+		normalized = true
+	}
 
 	vbo.Bind()
 
-	gl.VertexAttribPointerWithOffset(layout, numComponents, gtype, false, stride*int32(gsize), uintptr(offset*gsize))
+	gl.VertexAttribPointerWithOffset(layout, numComponents, kind.glType, normalized, int32(stride), uintptr(offset))
 	diagnose()
 	gl.EnableVertexAttribArray(layout)
 	diagnose()
 
 	vbo.Unbind()
 }
+
+func (v *VAO) Draw(ebo *EBO) {
+	gl.DrawElementsWithOffset(gl.TRIANGLES, int32(len(ebo.indices)), gl.UNSIGNED_INT, 0)
+	diagnose()
+}
+
 func (v *VAO) Bind() {
 	gl.BindVertexArray(v.id)
 	diagnose()
