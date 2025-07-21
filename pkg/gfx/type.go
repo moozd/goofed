@@ -15,16 +15,20 @@ var glTypeSizes = map[uint32]int{
 }
 
 type GFXType struct {
-	Size       int
+	size   int
 	glType uint32
 }
 
 func newGFXType(openGLType uint32) *GFXType {
 	size := glTypeSizes[openGLType]
 	return &GFXType{
-		Size:       size,
+		size:   size,
 		glType: openGLType,
 	}
+}
+
+func (t *GFXType) SizeOf(count int) int {
+	return t.size * count
 }
 
 var (

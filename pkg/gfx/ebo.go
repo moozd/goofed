@@ -15,7 +15,7 @@ func NewEBO(indices []uint32) *EBO {
 	diagnose()
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo.id)
 	diagnose()
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, U32.SizeOf(len(indices)), gl.Ptr(indices), gl.STATIC_DRAW)
 	diagnose()
 
 	return ebo

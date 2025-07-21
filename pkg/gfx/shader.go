@@ -1,6 +1,9 @@
 package gfx
 
-import "github.com/go-gl/gl/v4.1-core/gl"
+import (
+	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
+)
 
 type Shader struct {
 	id uint32
@@ -32,6 +35,11 @@ func NewShader(vertSrc, fragSrc string) *Shader {
 
 func (s *Shader) Use() {
 	gl.UseProgram(s.id)
+}
+
+func (s *Shader) SetMat4(name string, mat mgl32.Mat4) {
+	location := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	gl.UniformMatrix4fv(location, 1, false, &mat[0])
 }
 
 func (s *Shader) Id() uint32 {

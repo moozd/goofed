@@ -1,15 +1,22 @@
 package gfx
 
 import (
+	"image/color"
 	"log"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+type ResizeHandler = func(w, h int32)
+
 type Surface struct {
-	win  *sdl.Window
-	gctx sdl.GLContext
+	win           *sdl.Window
+	gctx          sdl.GLContext
+	resizeHandler ResizeHandler
+	bg            color.RGBA
+	Projection    mgl32.Mat4
 }
 
 func NewSurface() *Surface {
@@ -18,11 +25,14 @@ func NewSurface() *Surface {
 	return s
 }
 
+func (s *Surface) Size() (w, h int32) { w, h = s.win.GetSize(); return }
+
+func (s *Surface) OnResize(fn ResizeHandler) { s.resizeHandler = fn }
+
 func (s *Surface) Loop(fn func()) {
 
 	defer s.cleanUp()
-	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
-	gl.Clear(gl.COLOR_BUFFER_BIT)
+	s.handleResize()
 
 	running := true
 	for running {
@@ -34,13 +44,40 @@ func (s *Surface) Loop(fn func()) {
 				if e.Keysym.Sym == sdl.K_ESCAPE {
 					running = false
 				}
+			case *sdl.WindowEvent:
+				if e.Event == sdl.WINDOWEVENT_RESIZED {
+					s.handleResize()
+				}
+
 			}
 		}
 
+		s.drawBackground()
 		fn()
-
 		s.win.GLSwap()
 	}
+}
+
+func (s *Surface) SetBackground(c color.RGBA) {
+	s.bg = c
+}
+
+func (s *Surface) drawBackground() {
+	r, g, b, a := toOpenGLColor(s.bg)
+	gl.ClearColor(r, g, b, a)
+	diagnose()
+	gl.Clear(gl.COLOR_BUFFER_BIT)
+	diagnose()
+}
+
+func (s *Surface) handleResize() {
+	w, h := s.win.GetSize()
+	gl.Viewport(0, 0, w, h)
+	s.Projection = mgl32.Ortho2D(0, float32(w), float32(h), 0)
+	if s.resizeHandler != nil {
+		s.resizeHandler(w, h)
+	}
+
 }
 
 func (gs *Surface) init() {

@@ -3,11 +3,14 @@ package gfx
 import "github.com/go-gl/gl/v4.1-core/gl"
 
 type VAO struct {
-	id uint32
+	id   uint32
+	size int
 }
 
-func NewVAO() *VAO {
-	vao := &VAO{}
+func NewVAO(size int) *VAO {
+	vao := &VAO{
+		size: size,
+	}
 
 	gl.GenVertexArrays(1, &vao.id)
 	diagnose()
@@ -17,7 +20,7 @@ func NewVAO() *VAO {
 	return vao
 }
 
-func (v *VAO) Define(vbo *VBO, kind *GFXType, layout uint32, numComponents int32, stride int, offset int) {
+func (v *VAO) Define(vbo *VBO, kind *GFXType, layout uint32, numComponents int32, offset int) {
 
 	normalized := false
 
@@ -27,7 +30,7 @@ func (v *VAO) Define(vbo *VBO, kind *GFXType, layout uint32, numComponents int32
 
 	vbo.Bind()
 
-	gl.VertexAttribPointerWithOffset(layout, numComponents, kind.glType, normalized, int32(stride), uintptr(offset))
+	gl.VertexAttribPointerWithOffset(layout, numComponents, kind.glType, normalized, int32(v.size), uintptr(offset))
 	diagnose()
 	gl.EnableVertexAttribArray(layout)
 	diagnose()

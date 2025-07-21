@@ -15,7 +15,7 @@ func NewVBO(vertices []float32) *VBO {
 	diagnose()
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo.id)
 	diagnose()
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*F32.Size, gl.Ptr(vertices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, F32.SizeOf(len(vertices)), gl.Ptr(vertices), gl.STATIC_DRAW)
 	diagnose()
 
 	return vbo
