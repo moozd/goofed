@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/png"
 	"log"
 	"os"
 
@@ -19,8 +18,8 @@ type Font struct {
 	cw, ch, cols, rows int
 }
 
-func (t *Font) TexID() uint32 {
-	return t.texId
+func (t *Font) TexSlotIndex() int32 {
+	return 0
 }
 
 func NewFont(path string, size float64) *Font {
@@ -102,11 +101,11 @@ func NewFont(path string, size float64) *Font {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	diagnose()
 
-	outFile := assert(os.Create("font_atlas.png"))
-	defer outFile.Close()
-
-	assert(0, png.Encode(outFile, img))
-
+	// outFile := assert(os.Create("font_atlas.png"))
+	// defer outFile.Close()
+	//
+	// assert(0, png.Encode(outFile, img))
+	//
 	return t
 }
 

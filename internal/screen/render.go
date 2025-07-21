@@ -28,7 +28,7 @@ func (self *Screen) Render() {
 
 	shader := gfx.NewShader(vertShaderSrc, fragShaderSrc)
 	shader.Use()
-	shader.SetInt("fontAtlas", 0)
+	shader.SetInt("fontAtlas", fnt.TexSlotIndex())
 
 	vao := gfx.NewVAO(gfx.F32.SizeOf(3 + 2 + 3 + 3))
 	vbo := gfx.NewVBO(vertices)
