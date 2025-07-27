@@ -13,6 +13,8 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
+// TODO: Replace with SDF
+
 type Font struct {
 	texId              uint32
 	cw, ch, cols, rows int
