@@ -82,18 +82,11 @@ func (s *Sdf) computeNearestDistance(x, y int) float64 {
 		{-1, -1},
 	}
 
-	vdc := 0
-
 	for _, c := range coords {
 		d, ok := s.findNearestOppositeNode(x, y, c.stepX, c.stepY)
 		if ok && d < res {
-			vdc += 1
 			res = d
 		}
-	}
-
-	if vdc == 0 {
-		return 0
 	}
 
 	return res
