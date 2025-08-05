@@ -17,7 +17,7 @@ func TestGenerateSDF(t *testing.T) {
 	}
 	m, ok = gm.Get('B')
 	if ok {
-		SaveGMeta('A', m)
+		SaveGMeta('B', m)
 	}
 
 }
