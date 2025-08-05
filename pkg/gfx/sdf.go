@@ -4,90 +4,24 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/png"
 	"math"
-	"os"
 )
 
-type Pixel struct {
-	x, y int
-	v    byte
+type sdf struct {
+	src bitmap
 }
 
-func (p *Pixel) GetKey() string {
-	return fmt.Sprintf("%d|%d", p.x, p.y)
-}
+func generateSDF(glyph []byte, h, w int) *image.Gray {
 
-func (p *Pixel) GetDistance(t *Pixel) float64 {
-	return math.Sqrt(math.Pow(float64(t.x-p.x), 2) + math.Pow(float64(t.y-p.y), 2))
-}
-
-type Bitmap struct {
-	src  []byte
-	h, w int
-}
-
-func (b *Bitmap) Get(x, y int) byte {
-
-	if b.src[b.idx(x, y)] > 0 {
-		return 1
-	}
-	return 0
-}
-
-func (b *Bitmap) idx(x, y int) int {
-	return y*b.w + x
-}
-
-func (b *Bitmap) IsInRange(x, y int) bool {
-	i := b.idx(x, y)
-
-	return i > 0 && i < len(b.src)
-}
-
-func (b *Bitmap) Bounds() (height, width int) {
-	height = b.h
-	width = b.w
-	return
-}
-
-type Sdf struct {
-	input  Bitmap
-	output [][]float32
-	img    *image.Gray
-}
-
-func NewSdf(src []byte, h, w int) *Sdf {
-
-	s := &Sdf{
-		input: Bitmap{
-			src: src,
-			h:   h,
-			w:   w,
+	s := &sdf{
+		src: bitmap{
+			bytes: glyph,
+			h:     h,
+			w:     w,
 		},
 	}
 
-	s.generate()
-
-	return s
-}
-
-func (s *Sdf) Image() *image.Gray {
-	return s.img
-}
-
-func (s *Sdf) Save(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return png.Encode(f, s.img)
-}
-
-func (s *Sdf) generate() {
-	height, width := s.input.Bounds()
+	height, width := s.src.bounds()
 
 	buff := make([][]float32, height)
 	for y := range height {
@@ -96,38 +30,30 @@ func (s *Sdf) generate() {
 
 	for y := range height {
 		for x := range width {
-			buff[y][x] = float32(s.sign(x, y) * s.computeNearestOppositeDistance(x, y))
+			buff[y][x] = s.sign(x, y) * s.computeNearestOppositeDistance(x, y)
 		}
 	}
 
-	fmt.Print("[\n")
-	for _, row := range buff {
-		fmt.Printf("\t%v\n", row)
-	}
-	fmt.Println("]")
-	fmt.Println()
-
-	s.output = buff
-
-	s.img = s.createImage()
+	return s.createImage(buff)
 }
 
-func (s *Sdf) sign(x, y int) float64 {
-	if s.input.Get(x, y) == 1 {
+func (s *sdf) sign(x, y int) float32 {
+	if s.src.get(x, y) == 1 {
 		return -1.0
 	}
 
 	return +1.0
 }
 
-func (s *Sdf) computeNearestOppositeDistance(x, y int) float64 {
-	var node *Pixel
+func (s *sdf) computeNearestOppositeDistance(x, y int) float32 {
+	// this the current node
+	var node *pixel
 	found := false
-	root := &Pixel{x, y, s.input.Get(x, y)}
+	root := &pixel{x, y, s.src.get(x, y)}
 	visited := make(map[string]bool)
-	visited[root.GetKey()] = true
+	visited[root.getKey()] = true
 
-	queue := []*Pixel{root}
+	queue := []*pixel{root}
 	vx := []int{0, 0, 1, 1, 1, -1, -1, -1}
 	vy := []int{1, -1, 0, 1, -1, 1, 0, -1}
 
@@ -144,16 +70,18 @@ func (s *Sdf) computeNearestOppositeDistance(x, y int) float64 {
 			dx := node.x + vx[i]
 			dy := node.y + vy[i]
 
-			if !s.input.IsInRange(dx, dy) {
+			if !s.src.isInRange(dx, dy) {
 				continue
 			}
 
-			p := &Pixel{dx, dy, s.input.Get(dx, dy)}
-			if _, ok := visited[p.GetKey()]; ok {
+			p := &pixel{dx, dy, s.src.get(dx, dy)}
+
+			if _, ok := visited[p.getKey()]; ok {
 				continue
 			}
+
 			queue = append(queue, p)
-			visited[p.GetKey()] = true
+			visited[p.getKey()] = true
 
 		}
 
@@ -163,18 +91,18 @@ func (s *Sdf) computeNearestOppositeDistance(x, y int) float64 {
 		return 0
 	}
 
-	return node.GetDistance(root)
+	return node.measure(root)
 
 }
 
-func (s *Sdf) createImage() *image.Gray {
-	height := len(s.output)
-	width := len(s.output[0])
+func (s *sdf) createImage(output [][]float32) *image.Gray {
+	height := len(output)
+	width := len(output[0])
 
 	minVal, maxVal := float32(math.MaxFloat32), float32(-math.MaxFloat32)
 	for y := range height {
 		for x := range width {
-			val := s.output[y][x]
+			val := output[y][x]
 			if val < minVal {
 				minVal = val
 			}
@@ -189,10 +117,52 @@ func (s *Sdf) createImage() *image.Gray {
 
 	for y := range height {
 		for x := range width {
-			normalized := (s.output[y][x] - minVal) * scale
+			normalized := (output[y][x] - minVal) * scale
 			img.SetGray(x, y, color.Gray{Y: uint8(normalized)})
 		}
 	}
 
 	return img
+}
+
+type pixel struct {
+	x, y int
+	v    byte
+}
+
+func (p *pixel) getKey() string {
+	return fmt.Sprintf("%d|%d", p.x, p.y)
+}
+
+func (p *pixel) measure(t *pixel) float32 {
+	return float32(math.Sqrt(math.Pow(float64(t.x-p.x), 2) + math.Pow(float64(t.y-p.y), 2)))
+}
+
+type bitmap struct {
+	bytes []byte
+	h, w  int
+}
+
+func (b *bitmap) get(x, y int) byte {
+
+	if b.bytes[b.idx(x, y)] > 0 {
+		return 1
+	}
+	return 0
+}
+
+func (b *bitmap) idx(x, y int) int {
+	return y*b.w + x
+}
+
+func (b *bitmap) isInRange(x, y int) bool {
+	i := b.idx(x, y)
+
+	return i > 0 && i < len(b.bytes)
+}
+
+func (b *bitmap) bounds() (height, width int) {
+	height = b.h
+	width = b.w
+	return
 }

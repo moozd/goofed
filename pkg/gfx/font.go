@@ -102,11 +102,6 @@ func NewFont(path string, size float64) *Font {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	diagnose()
 
-	// outFile := assert(os.Create("font_atlas.png"))
-	// defer outFile.Close()
-	//
-	// assert(0, png.Encode(outFile, img))
-	//
 	return t
 }
 
@@ -126,7 +121,6 @@ func (f *Font) GetUVs(r rune) (u0, v0, u1, v1 float32) {
 	v0 = float32(flippedRow) * charHUV
 	v1 = float32(flippedRow+1) * charHUV
 
-	// log.Printf("Font %c  u0=%f v0=%f u1=%f v11=%f", u0, v0, u1, v1)
 	return
 }
 
