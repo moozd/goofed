@@ -18,8 +18,8 @@ type GMap struct {
 
 type GMeta struct {
 	Width, Height int
-	Image         *image.Gray
-	Tex           *image.Gray
+	Source        *image.Gray
+	DistanceField *image.Gray
 }
 
 func NewGMap(addr string, size int) (*GMap, error) {
@@ -60,8 +60,7 @@ func (gm *GMap) Get(r rune) (*GMeta, bool) {
 		return meta, true
 	}
 
-	meta, ok = gm.build(r)
-
+	meta, ok = gm.create(r)
 	if !ok {
 		return nil, false
 	}
@@ -71,7 +70,7 @@ func (gm *GMap) Get(r rune) (*GMeta, bool) {
 	return meta, true
 }
 
-func (gm *GMap) build(r rune) (*GMeta, bool) {
+func (gm *GMap) create(r rune) (*GMeta, bool) {
 
 	bounds, advance, ok := gm.face.GlyphBounds(r)
 	if !ok {
@@ -97,12 +96,11 @@ func (gm *GMap) build(r rune) (*GMeta, bool) {
 	d.DrawString(string(r))
 
 	meta := &GMeta{
-		Height: height,
-		Width:  width,
-		Image:  img,
-		Tex:    generateSDF(img.Pix, height, width),
+		Height:        height,
+		Width:         width,
+		Source:        img,
+		DistanceField: generateSDF(img.Pix, height, width),
 	}
 
 	return meta, true
-
 }

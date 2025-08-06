@@ -26,10 +26,10 @@ func SaveGMeta(c rune, m *GMeta) {
 
 	file1, _ := os.Create(fmt.Sprintf("%c_og.png", c))
 	defer file1.Close()
-	png.Encode(file1, m.Image)
+	png.Encode(file1, m.Source)
 
 	file2, _ := os.Create(fmt.Sprintf("%c_tex.png", c))
 	defer file2.Close()
-	png.Encode(file2, m.Tex)
+	png.Encode(file2, m.DistanceField)
 
 }
