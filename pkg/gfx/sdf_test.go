@@ -9,10 +9,10 @@ import (
 
 func TestGenerateSDF(t *testing.T) {
 
-	gm, _ := NewGMap("/home/mo/.local/share/fonts/FiraCode/FiraCodeNerdFont-Regular.ttf", 14)
+	gm, _ := NewGMap("/home/mo/.local/share/fonts/FiraCode/FiraCodeNerdFont-Regular.ttf", 18)
 	atlas := NewAtlas(gm)
 
-	atlas.Update('a', 'b', 'c', '1', '2', '3', '@')
+	atlas.Update('a', 'b', 'c', 'd', 'e', 'f', '1', '2', '3', '@')
 	atlas.GetTexID()
 
 	save("atlas.png", atlas.img)
