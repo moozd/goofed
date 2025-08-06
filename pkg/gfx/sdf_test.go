@@ -1,7 +1,7 @@
 package gfx
 
 import (
-	"fmt"
+	"image"
 	"image/png"
 	"os"
 	"testing"
@@ -10,26 +10,17 @@ import (
 func TestGenerateSDF(t *testing.T) {
 
 	gm, _ := NewGMap("/home/mo/.local/share/fonts/FiraCode/FiraCodeNerdFont-Regular.ttf", 14)
+	atlas := NewAtlas(gm)
 
-	m, ok := gm.Get('A')
-	if ok {
-		SaveGMeta('A', m)
-	}
-	m, ok = gm.Get('B')
-	if ok {
-		SaveGMeta('B', m)
-	}
+	atlas.Update('a', 'b', 'c', '1', '2', '3', '@')
+	atlas.GetTexID()
+
+	save("atlas.png", atlas.img)
 
 }
 
-func SaveGMeta(c rune, m *GMeta) {
-
-	file1, _ := os.Create(fmt.Sprintf("%c_og.png", c))
+func save(name string, img image.Image) {
+	file1, _ := os.Create(name)
 	defer file1.Close()
-	png.Encode(file1, m.Source)
-
-	file2, _ := os.Create(fmt.Sprintf("%c_tex.png", c))
-	defer file2.Close()
-	png.Encode(file2, m.DistanceField)
-
+	png.Encode(file1, img)
 }

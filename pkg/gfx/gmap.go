@@ -3,6 +3,7 @@ package gfx
 import (
 	"image"
 	"image/draw"
+	"log"
 	"os"
 
 	"golang.org/x/image/font"
@@ -11,13 +12,15 @@ import (
 )
 
 type GMap struct {
-	font  *opentype.Font
-	face  font.Face
-	cache map[rune]*GMeta
+	font         *opentype.Font
+	face         font.Face
+	cache        map[rune]*GData
+	LineHeight   int
+	AdvanceWidth int
 }
 
-type GMeta struct {
-	Width, Height int
+type GData struct {
+	char          rune
 	Source        *image.Gray
 	DistanceField *image.Gray
 }
@@ -25,26 +28,11 @@ type GMeta struct {
 func NewGMap(addr string, size int) (*GMap, error) {
 
 	gm := &GMap{
-		cache: make(map[rune]*GMeta),
+		cache: make(map[rune]*GData),
 	}
 
-	fb, err := os.ReadFile(addr)
-	if err != nil {
-		return nil, err
-	}
-
-	fnt, err := opentype.Parse(fb)
-	if err != nil {
-		return nil, err
-	}
-
-	fc, err := opentype.NewFace(fnt, &opentype.FaceOptions{
-		Size:    32,
-		DPI:     92,
-		Hinting: font.HintingNone,
-	})
-
-	gm.face = fc
+	gm.createFace(addr, float32(size))
+	gm.computeBoundingBoxSize()
 
 	return gm, nil
 }
@@ -53,7 +41,7 @@ func (gm *GMap) Close() {
 	gm.face.Close()
 }
 
-func (gm *GMap) Get(r rune) (*GMeta, bool) {
+func (gm *GMap) Get(r rune) (*GData, bool) {
 	meta, ok := gm.cache[r]
 
 	if ok {
@@ -70,7 +58,62 @@ func (gm *GMap) Get(r rune) (*GMeta, bool) {
 	return meta, true
 }
 
-func (gm *GMap) create(r rune) (*GMeta, bool) {
+func (gm *GMap) createFace(addr string, size float32) error {
+
+	fb, err := os.ReadFile(addr)
+	if err != nil {
+		return err
+	}
+
+	fnt, err := opentype.Parse(fb)
+	if err != nil {
+		return err
+	}
+
+	fc, err := opentype.NewFace(fnt, &opentype.FaceOptions{
+		Size:    float64(size),
+		DPI:     92,
+		Hinting: font.HintingNone,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	gm.face = fc
+
+	return nil
+}
+
+func (gm *GMap) computeBoundingBoxSize() {
+
+	chars := []rune{'M', 'W', 'Q', '#', '%', '&'}
+	width, height := 0, 0
+
+	for _, char := range chars {
+
+		_, adv, ok := gm.face.GlyphBounds(char)
+		metrics := gm.face.Metrics()
+
+		w := int(adv >> 6)            // font width
+		h := int(metrics.Height >> 6) // font height
+
+		if ok && w > width {
+			width = w
+		}
+
+		if h > height {
+			height = h
+		}
+	}
+
+	log.Printf("LineHeight: %d , AdvanceWidth: %d", height, width)
+
+	gm.LineHeight = height
+	gm.AdvanceWidth = width
+}
+
+func (gm *GMap) create(r rune) (*GData, bool) {
 
 	bounds, advance, ok := gm.face.GlyphBounds(r)
 	if !ok {
@@ -95,9 +138,8 @@ func (gm *GMap) create(r rune) (*GMeta, bool) {
 
 	d.DrawString(string(r))
 
-	meta := &GMeta{
-		Height:        height,
-		Width:         width,
+	meta := &GData{
+		char:          r,
 		Source:        img,
 		DistanceField: generateSDF(img.Pix, height, width),
 	}

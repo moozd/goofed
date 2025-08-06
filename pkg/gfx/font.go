@@ -36,7 +36,7 @@ func NewFont(path string, size float64) *Font {
 	ft := assert(opentype.Parse(fb))
 	fc := assert(opentype.NewFace(ft, &opentype.FaceOptions{
 		Size:    size,
-		DPI:     72, 
+		DPI:     72,
 		Hinting: font.HintingFull,
 	}))
 
