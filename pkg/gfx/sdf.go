@@ -39,10 +39,10 @@ func generateSDF(glyph []byte, h, w int) *image.Gray {
 
 func (s *sdf) sign(x, y int) float32 {
 	if s.src.get(x, y) == 1 {
-		return -1.0
+		return 1.0
 	}
 
-	return +1.0
+	return -1.0
 }
 
 func (s *sdf) computeNearestOppositeDistance(x, y int) float32 {
@@ -145,7 +145,7 @@ type bitmap struct {
 
 func (b *bitmap) get(x, y int) byte {
 
-	if b.bytes[b.idx(x, y)] > 0 {
+	if b.bytes[b.idx(x, y)] > 180 {
 		return 1
 	}
 	return 0

@@ -5,14 +5,16 @@ import (
 	"image/draw"
 	"log"
 	"math"
+
+	"github.com/go-gl/gl/v4.1-core/gl"
 )
 
 type Atlas struct {
-	gm         *GMap
+	gm         *Font
 	img        *image.RGBA
 	texId      uint32
 	dirty      bool
-	queue      []*GData
+	queue      []*Glyph
 	meta       map[rune]*atlasGMeta
 	row, col   int
 	rows, cols int
@@ -24,22 +26,24 @@ type atlasGMeta struct {
 	X, Y  int
 }
 
-// TODO: create a atlas that  has cols/rows like a grid
-//   - we ll store uvs and maintain the same atlas in the order that they are being added
-//   - Texture width ha limitation on gpu.
-//   - the functions(in this case Grid) that will right to screen. needs to add it to Atlas
-//     Atlas will store the coords and the rune
-//   - during the rendering  we'll call Update so texture will be updated if needed
-func NewAtlas(gm *GMap) *Atlas {
+func NewAtlas(gm *Font) *Atlas {
 	a := &Atlas{gm: gm}
 
 	a.dirty = true
-	a.initAtlasSize(32)
+	a.initAtlasSize(256)
 
 	a.meta = make(map[rune]*atlasGMeta)
 	a.img = image.NewRGBA(image.Rect(0, 0, a.cols*gm.AdvanceWidth, a.rows*gm.LineHeight))
+	draw.Draw(a.img, a.img.Bounds(), image.Black, image.Point{}, draw.Src)
 
 	return a
+}
+
+func (a *Atlas) GetSize() (w, h float32) {
+	bounds := a.img.Bounds()
+	w = float32(bounds.Dx())
+	h = float32(bounds.Dy())
+	return
 }
 
 func (a *Atlas) initAtlasSize(rectWidth int) {
@@ -50,8 +54,8 @@ func (a *Atlas) initAtlasSize(rectWidth int) {
 }
 
 func (a *Atlas) advance() {
-	a.row = int(math.Floor(float64(a.total / a.cols)))
-	a.col = (a.col + 1) % a.cols
+	a.col = (a.total - 1) % a.cols
+	a.row = int(math.Floor(float64((a.total - 1) / a.cols)))
 	log.Printf("row: %d, col: %d", a.row, a.col)
 }
 
@@ -97,9 +101,9 @@ func (a *Atlas) GetUVs(r rune) (u0, v0, u1, v1 float32) {
 	return
 }
 
-func (a *Atlas) GetTexID() uint32 {
+func (a *Atlas) Compile() {
 	if !a.dirty {
-		return a.texId
+		return
 	}
 
 	for len(a.queue) > 0 {
@@ -117,41 +121,48 @@ func (a *Atlas) GetTexID() uint32 {
 			image.Rect(x, y, x+src.Bounds().Dx(), y+src.Bounds().Dy()),
 			src,
 			image.Point{0, 0},
-			draw.Src)
+			draw.Over)
 
 	}
 
-	// gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	// diagnose()
-	// gl.GenTextures(1, &a.texId)
-	// diagnose()
-	// gl.ActiveTexture(gl.TEXTURE0)
-	// diagnose()
-	// gl.BindTexture(gl.TEXTURE_2D, a.texId)
-	// diagnose()
-	// gl.TexImage2D(
-	// 	gl.TEXTURE_2D,
-	// 	0,
-	// 	gl.RGBA,
-	// 	int32(a.img.Rect.Size().X),
-	// 	int32(a.img.Rect.Size().Y),
-	// 	0,
-	// 	gl.RGBA,
-	// 	gl.UNSIGNED_BYTE,
-	// 	gl.Ptr(a.img.Pix),
-	// )
-	// diagnose()
-	//
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	// diagnose()
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	// diagnose()
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	// diagnose()
-	// gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	// diagnose()
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	diagnose()
+	gl.GenTextures(1, &a.texId)
+	diagnose()
+	gl.ActiveTexture(gl.TEXTURE0)
+	diagnose()
+	gl.BindTexture(gl.TEXTURE_2D, a.texId)
+	diagnose()
+	gl.TexImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		int32(a.img.Rect.Size().X),
+		int32(a.img.Rect.Size().Y),
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		gl.Ptr(a.img.Pix),
+	)
+	diagnose()
+
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	diagnose()
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	diagnose()
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	diagnose()
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	diagnose()
 
 	a.dirty = false
 
-	return a.texId
+}
+
+func (a *Atlas) TexSlotIndex() int32 {
+	return 0
+}
+
+func (t *Atlas) Delete() {
+	gl.DeleteTextures(1, &t.texId)
 }

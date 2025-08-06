@@ -2,128 +2,143 @@ package gfx
 
 import (
 	"image"
-	"image/color"
 	"image/draw"
+	"log"
 	"os"
 
-	"github.com/go-gl/gl/v4.1-core/gl"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
 
-// TODO: Replace with SDF
-
 type Font struct {
-	texId              uint32
-	cw, ch, cols, rows int
+	font         *opentype.Font
+	face         font.Face
+	cache        map[rune]*Glyph
+	LineHeight   int
+	AdvanceWidth int
 }
 
-func (t *Font) TexSlotIndex() int32 {
-	return 0
+type Glyph struct {
+	char          rune
+	Source        *image.Gray
+	DistanceField *image.Gray
 }
 
-func NewFont(path string, size float64) *Font {
-	t := &Font{}
-	startChar := 32
-	endChar := 128
-	t.cols = 16
-	t.rows = 6
-	t.ch = int(size)
-	t.cw = int(size)
+func NewFont(addr string, size int) (*Font, error) {
 
-	fb := assert(os.ReadFile(path))
-	ft := assert(opentype.Parse(fb))
-	fc := assert(opentype.NewFace(ft, &opentype.FaceOptions{
-		Size:    size,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	}))
+	gm := &Font{
+		cache: make(map[rune]*Glyph),
+	}
 
-	aw := t.cols * t.cw
-	ah := t.rows * t.ch
-	img := image.NewRGBA(image.Rect(0, 0, aw, ah))
+	gm.createFace(addr, float32(size))
+	gm.computeBoundingBoxSize()
+
+	return gm, nil
+}
+
+func (gm *Font) Close() {
+	gm.face.Close()
+}
+
+func (gm *Font) Get(r rune) (*Glyph, bool) {
+	meta, ok := gm.cache[r]
+
+	if ok {
+		return meta, true
+	}
+
+	meta, ok = gm.createGlyph(r)
+	if !ok {
+		return nil, false
+	}
+
+	gm.cache[r] = meta
+
+	return meta, true
+}
+
+func (gm *Font) createFace(addr string, size float32) error {
+
+	fb, err := os.ReadFile(addr)
+	if err != nil {
+		return err
+	}
+
+	fnt, err := opentype.Parse(fb)
+	if err != nil {
+		return err
+	}
+
+	fc, err := opentype.NewFace(fnt, &opentype.FaceOptions{
+		Size:    float64(size),
+		DPI:     92,
+		Hinting: font.HintingNone,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	gm.face = fc
+
+	return nil
+}
+
+func (gm *Font) computeBoundingBoxSize() {
+
+	chars := []rune{'M', 'W', 'Q', '#', '%', '&'}
+	width, height := 0, 0
+
+	for _, char := range chars {
+
+		_, adv, ok := gm.face.GlyphBounds(char)
+		metrics := gm.face.Metrics()
+
+		w := int(adv >> 6)            // font width
+		h := int(metrics.Height >> 6) // font height
+
+		if ok && w > width {
+			width = w
+		}
+
+		if h > height {
+			height = h
+		}
+	}
+
+	log.Printf("LineHeight: %d , AdvanceWidth: %d", height, width)
+
+	gm.LineHeight = height
+	gm.AdvanceWidth = width
+}
+
+func (gm *Font) createGlyph(r rune) (*Glyph, bool) {
+
+	width := gm.AdvanceWidth
+	height := gm.LineHeight
+
+	img := image.NewGray(image.Rect(0, 0, width, height))
+
 	draw.Draw(img, img.Bounds(), image.Black, image.Point{}, draw.Src)
+
+	metrics := gm.face.Metrics()
+	baseline := int(metrics.Ascent >> 6)
 
 	d := &font.Drawer{
 		Dst:  img,
 		Src:  image.White,
-		Face: fc,
+		Face: gm.face,
+		Dot:  fixed.Point26_6{X: fixed.I(0), Y: fixed.I(baseline)},
 	}
 
-	metrics := fc.Metrics()
-	ascent := metrics.Ascent.Round()
-	// descent := metrics.Descent.Round()
-	// lineHeight := ascent + descent
+	d.DrawString(string(r))
 
-	charIndex := 0
-	for c := startChar; c <= endChar; c++ {
-		x := (charIndex % t.cols) * t.cw
-		y := (charIndex / t.cols) * t.ch
-
-		// Optional: debug background
-		cellRect := image.Rect(x, y, x+t.cw, y+t.ch)
-		draw.Draw(img, cellRect, &image.Uniform{C: color.RGBA{30, 30, 30, 255}}, image.Point{}, draw.Src)
-
-		// Correct baseline
-		d.Dot = fixed.P(x, y+ascent)
-		d.DrawString(string(rune(c)))
-
-		charIndex++
+	meta := &Glyph{
+		char:          r,
+		Source:        img,
+		DistanceField: generateSDF(img.Pix, height, width),
 	}
 
-	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	diagnose()
-	gl.GenTextures(1, &t.texId)
-	diagnose()
-	gl.ActiveTexture(gl.TEXTURE0)
-	diagnose()
-	gl.BindTexture(gl.TEXTURE_2D, t.texId)
-	diagnose()
-	gl.TexImage2D(
-		gl.TEXTURE_2D,
-		0,
-		gl.RGBA,
-		int32(img.Rect.Size().X),
-		int32(img.Rect.Size().Y),
-		0,
-		gl.RGBA,
-		gl.UNSIGNED_BYTE,
-		gl.Ptr(img.Pix),
-	)
-	diagnose()
-
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	diagnose()
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	diagnose()
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	diagnose()
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	diagnose()
-
-	return t
-}
-
-func (f *Font) GetUVs(r rune) (u0, v0, u1, v1 float32) {
-	charIndex := int(r) - 32
-	col := charIndex % f.cols
-	row := charIndex / f.cols
-
-	// Flip the row to match OpenGL UV origin (bottom-left)
-	flippedRow := f.rows - row - 1
-
-	charWUV := 1.0 / float32(f.cols)
-	charHUV := 1.0 / float32(f.rows)
-
-	u0 = float32(col) * charWUV
-	u1 = float32(col+1) * charWUV
-	v0 = float32(flippedRow) * charHUV
-	v1 = float32(flippedRow+1) * charHUV
-
-	return
-}
-
-func (t *Font) Delete() {
-	gl.DeleteTextures(1, &t.texId)
+	return meta, true
 }

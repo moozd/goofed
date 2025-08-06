@@ -46,6 +46,16 @@ func (s *Shader) SetInt(name string, i int32) {
 	gl.Uniform1i(texUniform, i)
 }
 
+func (s *Shader) SetFloat(name string, value float32) {
+	location := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	gl.Uniform1f(location, value)
+}
+
+func (s *Shader) SetVec2(name string, x, y float32) {
+	location := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	gl.Uniform2f(location, x, y)
+}
+
 func (s *Shader) Id() uint32 {
 	return s.id
 }

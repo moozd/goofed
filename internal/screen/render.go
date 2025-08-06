@@ -23,12 +23,17 @@ func (self *Screen) Render() {
 
 	w, h := surface.Size()
 
-	fnt := gfx.NewFont(FONT_ADDR, 32)
-	vertices, indices := createGrid(fnt, w, h, int(w/32), int(h/32))
+	fnt, _ := gfx.NewFont(FONT_ADDR, 14)
+	atlas := gfx.NewAtlas(fnt)
+	aw, ah := atlas.GetSize()
+
+	vertices, indices := createGrid(atlas, w, h, int(w/int32(fnt.AdvanceWidth)), int(h/int32(fnt.LineHeight)))
 
 	shader := gfx.NewShader(vertShaderSrc, fragShaderSrc)
 	shader.Use()
-	shader.SetInt("fontAtlas", fnt.TexSlotIndex())
+	shader.SetInt("fontAtlas", atlas.TexSlotIndex())
+	shader.SetFloat("pixelRange", 4.0)
+	shader.SetVec2("vec2", float32(aw), float32(ah))
 
 	vao := gfx.NewVAO(gfx.F32.SizeOf(3 + 2 + 3 + 3))
 	vbo := gfx.NewVBO(vertices)
@@ -50,6 +55,8 @@ func (self *Screen) Render() {
 
 	surface.Loop(func() {
 		shader.Use()
+		atlas.Compile()
+
 		vao.Bind()
 		vao.Draw(ebo)
 		vao.Unbind()
@@ -59,11 +66,11 @@ func (self *Screen) Render() {
 	vbo.Delete()
 	vao.Delete()
 	ebo.Delete()
-	fnt.Delete()
+	atlas.Delete()
 
 }
 
-func createGrid(fnt *gfx.Font, ww, wh int32, m, n int) (vertices []float32, indices []uint32) {
+func createGrid(atlas *gfx.Atlas, ww, wh int32, m, n int) (vertices []float32, indices []uint32) {
 
 	tc := uint32(0)
 	cw := float32(ww) / float32(m)
@@ -79,7 +86,8 @@ func createGrid(fnt *gfx.Font, ww, wh int32, m, n int) (vertices []float32, indi
 			fgr, fgg, fgb := 1, 1, 1
 			bgr, bgg, bgb := 0.1, 0.1, 0.1
 
-			u0, v0, u1, v1 := fnt.GetUVs('A')
+			atlas.Update('A')
+			u0, v0, u1, v1 := atlas.GetUVs('A')
 
 			vertices = append(vertices, []float32{
 				// pos   // uv   // fg           												   // bg
