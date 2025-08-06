@@ -75,6 +75,8 @@ func createGrid(atlas *gfx.Atlas, ww, wh int32, m, n int) (vertices []float32, i
 	tc := uint32(0)
 	cw := float32(ww) / float32(m)
 	ch := float32(wh) / float32(n)
+	ci := 0
+	chars := []rune{'A', 'B', 'i', 'G', '1', '2', '#', '@', '%'}
 	for y := range n {
 		for x := range m {
 
@@ -86,8 +88,10 @@ func createGrid(atlas *gfx.Atlas, ww, wh int32, m, n int) (vertices []float32, i
 			fgr, fgg, fgb := 1, 1, 1
 			bgr, bgg, bgb := 0.1, 0.1, 0.1
 
-			atlas.Update('A')
-			u0, v0, u1, v1 := atlas.GetUVs('A')
+			C := chars[ci]
+			ci = (ci + 1) % len(chars)
+			atlas.Update(C)
+			u0, v0, u1, v1 := atlas.GetUVs(C)
 
 			vertices = append(vertices, []float32{
 				// pos   // uv   // fg           												   // bg

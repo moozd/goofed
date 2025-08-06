@@ -12,6 +12,7 @@ uniform vec2 atlasSize; // Atlas texture dimensions
 
 void main() {
     float sdf = texture(fontAtlas, uv).r;
+    // float alpha = pow(sdf, 5.0);
     float distance = sdf - 0.5;
     distance *= pixelRange;
 
@@ -20,7 +21,6 @@ void main() {
     float screenPxRange = max(0.5 * dot(unitRange, screenTexSize), 1.0);
 
     float alpha = clamp(distance * screenPxRange + 0.5, 0.0, 1.0);
-
     vec3 color = mix(bg, fg, alpha);
     FragColor = vec4(color, 1.0);
 }
